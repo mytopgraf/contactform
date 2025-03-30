@@ -1,10 +1,16 @@
-import { Client } from "node-appwrite";
 import axios from "axios";
 
-export default async function (req, res) {
+export default async function ({ req, res, log }) {
     try {
-        // ✅ 1. Получаем данные из запроса
-        const payload = JSON.parse(req.payload || "{}");
+        // ✅ 1. Получаем данные из запроса с обработкой ошибок
+        let payload = {};
+        try {
+            payload = JSON.parse(req.payload || "{}");
+        } catch (parseError) {
+            log("❌ Ошибка парсинга payload: " + parseError.message);
+            return res.json({ error: "Invalid payload format" }, 400);
+        }
+
         const name = payload.name || "Аноним";
         const email = payload.email || "Не указан";
         const message = payload.message || "Пустое сообщение";
@@ -14,16 +20,16 @@ export default async function (req, res) {
         const chatId = process.env.TELEGRAM_CHAT_ID;
 
         if (!botToken || !chatId) {
-            console.error("❌ Ошибка: Нет токена или Chat ID");
+            log("❌ Ошибка: Отсутствует TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID");
             return res.json({ error: "Missing Telegram credentials" }, 400);
         }
 
         // ✅ 3. Формируем текст сообщения
         const telegramMessage = `
-		📩 *Новое сообщение с сайта*
-		👤 *Имя:* ${name}
-		📧 *Email:* ${email}
-		📝 *Сообщение:* ${message}
+             *Новое сообщение с сайта*
+             *Имя:* ${name}
+             *Email:* ${email}
+             *Сообщение:* ${message}
         `;
 
         // ✅ 4. Отправляем сообщение в Telegram
@@ -34,11 +40,12 @@ export default async function (req, res) {
             parse_mode: "Markdown",
         });
 
-        console.log("✅ Telegram ответ:", response.data);
+        log("✅ Telegram ответ: " + JSON.stringify(response.data));
         return res.json({ success: true, telegramResponse: response.data });
 
     } catch (error) {
-        console.error("❌ Ошибка при отправке:", error.response?.data || error.message);
+        log("❌ Ошибка при отправке: " + (error.response?.data || error.message));
+        log("❌ Полная ошибка: " + JSON.stringify(error));
         return res.json({ error: error.response?.data || error.message }, 500);
     }
 }
