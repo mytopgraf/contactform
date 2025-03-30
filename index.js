@@ -1,5 +1,5 @@
 import { Client } from "node-appwrite";
-import axios from "axios";
+import axios from "axios"
 
 export default async ({ req, res }) => {
   const { name, email, message } = JSON.parse(req.body);
